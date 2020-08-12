@@ -1,35 +1,28 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using AdBoardAPI.ImageFileMgr;
+using AdBoardAPI.Models;
+using AdBoardAPI.Options;
+using AdBoardAPI.Pagination;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using AdBoardAPI.Models;
-using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Hosting;
+using System;
 using System.Collections.Generic;
-using AdBoardAPI.ImageFileMgr;
-using System.Net;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace AdBoardAPI.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
+    [ApiController]    
     public class AdsController : ControllerBase
     {
         private readonly AdBoardContext _context;
-        private IConfiguration _configuration;
-        private IWebHostEnvironment _env;
-        private ILogger<AdsController> _logger;
+        private readonly AppConfiguration _options;
 
-        public AdsController(AdBoardContext context, IConfiguration configuration, IWebHostEnvironment env, ILogger<AdsController> logger)
+        public AdsController(AdBoardContext context, AppConfiguration options)
         {
             _context = context;
-            _configuration = configuration;
-            _env = env;
-            _logger = logger;
+            _options = options;
         }
 
         // GET: api/Ads/5
@@ -39,27 +32,11 @@ namespace AdBoardAPI.Controllers
         /// <param name="id">Уникальный идентификатор объявления</param>
         /// <response code="200">ОК</response>
         /// <response code="404">Объявление не найдено</response>
-        /// <response code="500">Ошибка сервера</response>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(User), 200)]
         public async Task<ActionResult<Ad>> GetAd(Guid id)
         {
-            Ad ad;
-            try
-            {                
-                ad = await _context.Ads.FindAsync(id);
-            }
-            catch (SqlException ex)
-            {
-                _logger.LogError($"Ошибка доступа к базе данных.\n{ex.Message}");
-                return Problem("База данных недоступна", null, StatusCodes.Status500InternalServerError, "Ошибка доступа к базе данных");
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError($"Ошибка при исполнении метода.\n{ex.Message}");
-                return Problem("Ошибка сервера", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
-            }
-
+            var ad = await _context.Ads.FindAsync(id);
             if (ad == null)
             {
                 return NotFound();
@@ -72,26 +49,12 @@ namespace AdBoardAPI.Controllers
         /// <summary>
         /// Возвращает список всех объявлений, внесенных в базу данных, если они существуют
         /// </summary> 
-        /// <response code="200">ОК</response>
-        /// <response code="500">Ошибка сервера</response>     
+        /// <response code="200">ОК</response>  
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<Ad>), 200)]
         public async Task<ActionResult<IEnumerable<Ad>>> GetAds()
         {
-            try
-            {
-                return await _context.Ads.ToListAsync();
-            }
-            catch (SqlException ex)
-            {
-                _logger.LogError($"Ошибка доступа к базе данных.\n{ex.Message}");
-                return Problem("База данных недоступна", null, StatusCodes.Status500InternalServerError, "Ошибка доступа к базе данных");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Ошибка при исполнении метода.\n{ex.Message}");
-                return Problem("Ошибка сервера", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
-            }
+            return await _context.Ads.ToListAsync();
         }
 
         // GET: api/Ads/index
@@ -110,30 +73,37 @@ namespace AdBoardAPI.Controllers
         /// <param name="onPage">Количество строк на странице. По умолчанию - 10.</param>
         /// <response code="200">ОК</response>
         /// <response code="204">Список объявлений пуст</response>
-        /// <response code="500">Ошибка сервера</response>
         [HttpGet("index")]
-        [ProducesResponseType(typeof(PageView), 200)]
-        public async Task<ActionResult<PageView>> GetAds(string user, string subject, string content, int? rating, DateTime? created, string search, string sortBy, int? page, int? onPage)
+        [ProducesResponseType(typeof(PageView<Ad>), 200)]
+        public async Task<ActionResult<PageView<Ad>>> GetAds(string user, string subject, string content, int? rating,
+            DateTime? created, string search, string sortBy, int? page, int? onPage)
         {
-            try
+            if (!_context.Ads.Any()) return NoContent();
+
+            var listMaker = new ListMaker<Ad>(_context.Ads);
+            var list = listMaker.MakeList();
+
+            if (!string.IsNullOrEmpty(search))
             {
-                if (_context.Ads.Count() == 0) return NoContent();
-                var paginator = new Paginator(_context, user, subject, content, rating, created, search, sortBy, page, onPage);
-                var ads = await paginator.MakePageAsync();
-                return ads;
+                var adsSearcher = new AdsSearcher(list, search);
+                list = adsSearcher.Search();
             }
-            catch (SqlException ex)
+
+            var adsFilter = new AdsFilter(list, user, subject, content, rating, created);
+            list = adsFilter.Filter();
+
+            if (!string.IsNullOrEmpty(sortBy))
             {
-                _logger.LogError($"Ошибка доступа к базе данных.\n{ex.Message}");
-                return Problem("База данных недоступна", null, StatusCodes.Status500InternalServerError, "Ошибка доступа к базе данных");
+                var adsSorter = new AdsSorter(list, sortBy);
+                list = adsSorter.Sort();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Ошибка при исполнении метода.\n{ex.Message}");
-                return Problem("Ошибка сервера", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
-            }
-        }        
-                
+
+            var paginator = new Paginator<Ad>(list, page, onPage);
+            var ads = await paginator.MakePageViewAsync();
+
+            return ads;
+        }
+
 
         // PUT: api/Ads/5
         /// <summary>
@@ -143,27 +113,10 @@ namespace AdBoardAPI.Controllers
         /// <param name="adDTO">Измененное объявление</param>
         /// <response code="200">Объявление изменено</response>
         /// <response code="404">Исходное объявление не найдено</response>
-        /// <response code="500">Ошибка сервера</response>
         [HttpPut("{id}")]
         public async Task<IActionResult> PutAd(Guid id, AdDTO adDTO)
         {
-            Ad ad;
-
-            try
-            {
-                ad = await _context.Ads.FindAsync(id);
-            }
-            catch (SqlException ex)
-            {
-                _logger.LogError($"Ошибка доступа к базе данных.\n{ex.Message}");
-                return Problem("База данных недоступна", null, StatusCodes.Status500InternalServerError, "Ошибка доступа к базе данных");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Ошибка при исполнении метода.\n{ex.Message}");
-                return Problem("Ошибка сервера", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
-            }
-
+            var ad = await _context.Ads.FindAsync(id);
             if (ad == null)
             {
                 return NotFound();
@@ -173,15 +126,16 @@ namespace AdBoardAPI.Controllers
             ad.Subject = adDTO.Subject;
             ad.Content = adDTO.Content;
 
-            IImageFileManager imageManager = new ImageFileManager(_configuration);
-            var imageURL = imageManager.GenerateURL(ad.Id.ToString(), adDTO.Image.FileName);
+            IImageFileManager imageManager = new ImageFileManager(_options);
+            var imageUrl = imageManager.GenerateURL(ad.Id.ToString(), adDTO.Image.FileName);
             try
             {
-                await imageManager.UploadImageAsync(adDTO.Image, imageURL);
+                await imageManager.UploadImageAsync(adDTO.Image, imageUrl);
             }
-            catch(Exception)
+            catch (Exception)
             {
-                return Problem("Возникла ошибка при загрузке изображения", null, StatusCodes.Status500InternalServerError, "Ошибка загрузки изображения");
+                return Problem("Возникла ошибка при загрузке изображения", null,
+                    StatusCodes.Status500InternalServerError, "Ошибка загрузки изображения");
             }
 
             _context.Entry(ad).State = EntityState.Modified;
@@ -201,16 +155,6 @@ namespace AdBoardAPI.Controllers
                     throw;
                 }
             }
-            catch (SqlException ex)
-            {
-                _logger.LogError($"Ошибка доступа к базе данных.\n{ex.Message}");
-                return Problem("База данных недоступна", null, StatusCodes.Status500InternalServerError, "Ошибка доступа к базе данных");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Ошибка при исполнении метода.\n{ex.Message}");
-                return Problem("Ошибка сервера", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
-            }
 
             return Ok();
         }
@@ -222,80 +166,58 @@ namespace AdBoardAPI.Controllers
         /// <param name="adDTO">Данные нового объявления</param>
         /// <response code="201">Объявление добавлено</response>
         /// <response code="404">Пользователь, указанный в качестве автора, не найден</response>
-        /// <response code="500">Ошибка сервера</response>
         [HttpPost]
         [ProducesResponseType(typeof(Ad), 201)]
         public async Task<ActionResult<Ad>> PostAd([FromForm] AdDTO adDTO)
         {
-            Ad ad;
-            try
+            if (!UserExists(adDTO.User)) return NotFound();
+
+            var maxAds = _options.PublishOptions.MaxAdsByUser;
+            if (await _context.Users.Where(user => user.Id == adDTO.User).CountAsync() >= maxAds)
             {
-                if (!UserExists(adDTO.User)) return NotFound();
-
-                if (!int.TryParse(_configuration.GetSection("AppConfiguration")["maxAdsByUser"], out var maxAds))
-                {
-                    return Problem("Неверно указан параметр maxAds в настройках приложения", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
-                }
-
-                if (await _context.Users.Where(user => user.Id == adDTO.User).CountAsync() >= maxAds)
-                {
-                    return BadRequest();
-                }
-
-                var maxNumber = 0;
-                if (await _context.Ads.CountAsync() > 0)
-                {
-                    maxNumber = _context.Ads.Max(x => x.Number);
-                }
-
-                var adId = Guid.NewGuid();
-                var imageUrl = "";
-
-                if (adDTO.Image != null)
-                {
-                    IImageFileManager imageManager = new ImageFileManager(_configuration);
-                    imageUrl = imageManager.GenerateURL(adId.ToString(), adDTO.Image.FileName);
-                    try
-                    {
-                        await imageManager.UploadImageAsync(adDTO.Image, imageUrl);
-                    }
-                    catch (Exception)
-                    {
-                        return Problem("Возникла ошибка при загрузке изображения", null, StatusCodes.Status500InternalServerError, "Ошибка загрузки изображения");
-                    }
-                }
-
-                ad = new Ad
-                {
-                    Id = adId,
-                    Created = DateTime.Now,
-                    Number = maxNumber + 1,
-                    Rating = new Random().Next(-5, 10),
-                    User = adDTO.User,
-                    Subject = adDTO.Subject,
-                    Content = adDTO.Content is null ? adDTO.Subject : adDTO.Content,
-                    ImageURL = imageUrl
-                };
-
-                _context.Ads.Add(ad);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                return Problem("Проблема при добавлении записи в базу данных", null, StatusCodes.Status500InternalServerError, "Ошибка сервера", null);
-            }
-            catch (SqlException ex)
-            {
-                _logger.LogError($"Ошибка доступа к базе данных.\n{ex.Message}");
-                return Problem("База данных недоступна", null, StatusCodes.Status500InternalServerError, "Ошибка доступа к базе данных");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Ошибка при исполнении метода.\n{ex.Message}");
-                return Problem("Ошибка сервера", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
+                return BadRequest();
             }
 
-            return CreatedAtAction(nameof(GetAd), new { id = ad.Id }, ad);
+            var maxNumber = 0;
+            if (await _context.Ads.CountAsync() > 0)
+            {
+                maxNumber = _context.Ads.Max(x => x.Number);
+            }
+
+            var adId = Guid.NewGuid();
+            var imageUrl = "";
+
+            if (adDTO.Image != null)
+            {
+                IImageFileManager imageManager = new ImageFileManager(_options);
+                imageUrl = imageManager.GenerateURL(adId.ToString(), adDTO.Image.FileName);
+                try
+                {
+                    await imageManager.UploadImageAsync(adDTO.Image, imageUrl);
+                }
+                catch (Exception)
+                {
+                    return Problem("Возникла ошибка при загрузке изображения", null,
+                        StatusCodes.Status500InternalServerError, "Ошибка загрузки изображения");
+                }
+            }
+
+            var ad = new Ad
+            {
+                Id = adId,
+                Created = DateTime.Now,
+                Number = maxNumber + 1,
+                Rating = new Random().Next(-5, 10),
+                User = adDTO.User,
+                Subject = adDTO.Subject,
+                Content = adDTO.Content is null ? adDTO.Subject : adDTO.Content,
+                ImageURL = imageUrl
+            };
+
+            await _context.Ads.AddAsync(ad);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetAd), new {id = ad.Id}, ad);
         }
 
         // DELETE: api/Ads/5
@@ -305,35 +227,17 @@ namespace AdBoardAPI.Controllers
         /// <param name="id">Уникальный идентификатор объявления</param>
         /// <response code="200">Объявление удалено</response>
         /// <response code="404">Объявление не найдено</response>
-        /// <response code="500">Ошибка сервера</response>
         [HttpDelete("{id}")]
         public async Task<ActionResult<Ad>> DeleteAd(Guid id)
         {
-            try
+            var ad = await _context.Ads.FindAsync(id);
+            if (ad == null)
             {
-                var ad = await _context.Ads.FindAsync(id);
-                if (ad == null)
-                {
-                    return NotFound();
-                }
+                return NotFound();
+            }
 
-                _context.Ads.Remove(ad);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                return Problem("Ошибка удаления записи из базы данных", null, StatusCodes.Status500InternalServerError, "Ошибка сервера", null);
-            }
-            catch (SqlException ex)
-            {
-                _logger.LogError($"Ошибка доступа к базе данных.\n{ex.Message}");
-                return Problem("База данных недоступна", null, StatusCodes.Status500InternalServerError, "Ошибка доступа к базе данных");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Ошибка при исполнении метода.\n{ex.Message}");
-                return Problem("Ошибка сервера", null, StatusCodes.Status500InternalServerError, "Ошибка сервера");
-            }
+            _context.Ads.Remove(ad);
+            await _context.SaveChangesAsync();
 
             return Ok();
         }

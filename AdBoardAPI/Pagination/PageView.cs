@@ -1,14 +1,12 @@
 ﻿using AdBoardAPI.Models;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace AdBoardAPI
 {
     /// <summary>
     /// Сущность "Страница". Содержит список объявлений, признаки наличия предыдущей и следующей страницы, общее количество страниц
     /// </summary>
-    public class PageView
+    public class PageView<T> where T : IModel
     {
         /// <summary>
         /// Номер текущей страницы
@@ -38,6 +36,6 @@ namespace AdBoardAPI
         /// <summary>
         /// Список объявлений
         /// </summary>
-        public List<Ad> List { get; internal set; }
+        public List<T> List { get; internal set; }
     }
 }

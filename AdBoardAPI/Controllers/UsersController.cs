@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using AdBoardAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using AdBoardAPI.Models;
-using Microsoft.AspNetCore.Hosting;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace AdBoardAPI.Controllers
 {
@@ -13,11 +12,9 @@ namespace AdBoardAPI.Controllers
     public class UsersController : ControllerBase
     {
         private readonly AdBoardContext _context;
-        IWebHostEnvironment _env;
 
-        public UsersController(AdBoardContext context, IWebHostEnvironment env)
+        public UsersController(AdBoardContext context)
         {
-            _env = env;
             _context = context;
         }
 
@@ -26,7 +23,6 @@ namespace AdBoardAPI.Controllers
         /// Возвращает список всех пользователей, внесенных в базу данных, если они существуют
         /// </summary>
         /// <response code="200">ОК</response>
-        /// <response code="500">Ошибка сервера</response>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<User>), 200)]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
@@ -41,7 +37,6 @@ namespace AdBoardAPI.Controllers
         /// <param name="id">Уникальный идентификатор пользователя</param>
         /// <response code="200">ОК</response>
         /// <response code="404">Пользователь не найден</response>
-        /// <response code="500">Ошибка сервера</response>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(User), 200)]
         public async Task<ActionResult<User>> GetUser(Guid id)

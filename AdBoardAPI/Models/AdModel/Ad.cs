@@ -1,13 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System;
 
 namespace AdBoardAPI.Models
 {
     /// <summary>
     /// Сущность "Объявление".
     /// </summary>
-    public class Ad
+    public class Ad : IModel
     {
         /// <summary>
         /// Уникальный идентификатор объявления. Генерируется при публикации. Ключевое поле

@@ -6,7 +6,7 @@ namespace AdBoardAPI.Models
     /// <summary>
     /// Сущность "Пользователь".
     /// </summary>
-    public class User
+    public class User : IModel
     {
         /// <summary>
         /// Уникальный идентификатор пользователя 

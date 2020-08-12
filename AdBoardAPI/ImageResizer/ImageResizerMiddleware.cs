@@ -1,30 +1,30 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using AdBoardAPI.Controllers;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace AdBoardAPI.ImageResizer
 {
     public class ImageResizerMiddleware
     {    
         private readonly RequestDelegate _next;
-        ILoggerFactory _factory;
-        IWebHostEnvironment _env;
+        private readonly ILoggerFactory _factory;
+        private readonly IWebHostEnvironment _env;
+        private readonly IMemoryCache _memoryCache;
 
-        private static readonly string[] suffixes = new string[] { ".png", ".jpg", ".jpeg" };
+        private static readonly string[] Suffixes = { ".png", ".jpg", ".jpeg" };
 
         public ImageResizerMiddleware(RequestDelegate next, IWebHostEnvironment env, ILoggerFactory factory, IMemoryCache memoryCache)
         {
             _next = next;
             _factory = factory;
             _env = env;
+            _memoryCache = memoryCache;
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -36,17 +36,16 @@ namespace AdBoardAPI.ImageResizer
                 return;
             }
 
-            var resizeParams = GetResizeParams(path, httpContext.Request.Query);
-            if (!resizeParams.hasParams)
+            var imageResizer = new ImageResizer(httpContext.Request, _factory, _memoryCache, _env);
+            var result = imageResizer.Resize();
+            if (!(result is null))
+            {
+                await httpContext.Response.Body.WriteAsync(result.ToArray(), 0, result.ToArray().Length);
+            }
+            else
             {
                 await _next.Invoke(httpContext);
-                return;
             }
-
-            var imageResizer = new ImageResizerFake(path, resizeParams, _env, _factory);
-            var result = imageResizer.Resize();           
-            
-            await httpContext.Response.Body.WriteAsync(result, 0, result.Length);
         }
 
         private bool IsImagePath(PathString path)
@@ -55,38 +54,7 @@ namespace AdBoardAPI.ImageResizer
             {
                 return false;
             }
-            return suffixes.Any(x => path.Value.EndsWith(x, StringComparison.OrdinalIgnoreCase));
-        }
-
-        private ResizeParameters GetResizeParams(PathString path, IQueryCollection query)
-        {
-            ResizeParameters resizeParams = new ResizeParameters();
-
-            resizeParams.hasParams =
-                resizeParams.GetType().GetTypeInfo()
-                .GetFields().Where(f => f.Name != "hasParams")
-                .Any(f => query.ContainsKey(f.Name));
-
-            if (!resizeParams.hasParams)
-                return resizeParams;
-
-            if (query.ContainsKey("autorotate"))
-                resizeParams.autorotate = true;
-
-            int width = 0;
-            if (query.ContainsKey("width"))
-                int.TryParse(query["width"], out width);
-            resizeParams.width = width;
-
-            int height = 0;
-            if (query.ContainsKey("height"))
-                int.TryParse(query["height"], out height);
-            resizeParams.height = height;
-
-            string format = path.Value.Substring(path.Value.LastIndexOf('.') + 1);
-            resizeParams.format = format;
-
-            return resizeParams;
+            return Suffixes.Any(x => path.Value.EndsWith(x, StringComparison.OrdinalIgnoreCase));
         }
     }
 
