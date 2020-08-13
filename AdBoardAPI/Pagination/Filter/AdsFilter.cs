@@ -1,9 +1,9 @@
-﻿using AdBoardAPI.Models;
-using AdBoardAPI.Pagination.Filter;
-using System;
+﻿using System;
 using System.Linq;
+using AdBoardAPI.Models;
+using AdBoardAPI.Models.AdModel;
 
-namespace AdBoardAPI.Pagination
+namespace AdBoardAPI.Pagination.Filter
 {
     public class AdsFilter : IFilter<Ad>
     {

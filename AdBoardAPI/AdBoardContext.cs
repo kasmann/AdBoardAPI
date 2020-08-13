@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using AdBoardAPI.Models;
+using AdBoardAPI.Models.AdModel;
 
 namespace AdBoardAPI
 {

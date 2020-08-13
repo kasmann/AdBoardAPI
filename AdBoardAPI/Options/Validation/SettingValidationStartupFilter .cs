@@ -1,16 +1,19 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 
-namespace AdBoardAPI
+namespace AdBoardAPI.Options.Validation
 {
     public class SettingValidationStartupFilter : IStartupFilter
     {
-        readonly IEnumerable<IValidatable> _validatableObjects;
-        public SettingValidationStartupFilter(IEnumerable<IValidatable> validatableObjects)
+        private readonly IEnumerable<IValidatable> _validatableObjects;
+        private readonly ILogger<SettingValidationStartupFilter> _logger;
+        public SettingValidationStartupFilter(IEnumerable<IValidatable> validatableObjects, ILogger<SettingValidationStartupFilter> logger)
         {
+            _logger = logger;
             _validatableObjects = validatableObjects;
         }
 
@@ -25,7 +28,7 @@ namespace AdBoardAPI
                 }
                 catch (ValidationException ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    _logger.LogError(ex.Message);
                     validated = false;
                 }
             }

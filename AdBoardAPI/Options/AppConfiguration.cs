@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using AdBoardAPI.Options.Validation;
 
 namespace AdBoardAPI.Options
 {

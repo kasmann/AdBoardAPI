@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace AdBoardAPI.Models
+namespace AdBoardAPI.Models.AdModel
 {
     /// <summary>
     /// Сущность "Объявление".

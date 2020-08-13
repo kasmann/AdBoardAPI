@@ -1,8 +1,8 @@
-﻿using AdBoardAPI.Models;
-using AdBoardAPI.Pagination.Searcher;
-using System.Linq;
+﻿using System.Linq;
+using AdBoardAPI.Models;
+using AdBoardAPI.Models.AdModel;
 
-namespace AdBoardAPI.Pagination
+namespace AdBoardAPI.Pagination.Searcher
 {
     public class AdsSearcher : ISearcher<Ad>
     {

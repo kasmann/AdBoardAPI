@@ -1,4 +1,4 @@
-﻿namespace AdBoardAPI
+﻿namespace AdBoardAPI.Options.Validation
 {
     public interface IValidatable
     {

@@ -1,39 +1,27 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Memory;
+﻿using AdBoardAPI.ResizableImg;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
 using System;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 
 namespace AdBoardAPI.ImageResizer
 {
     public class ImageResizer
     {
-        private HttpRequest _request;
-        private ResizeParameters _resizeParams;
         private readonly ILogger<ImageResizer> _logger;
-        private readonly PathString _path;
-        private readonly IMemoryCache _memoryCache;
-        private readonly DateTime _lastWriteTimeUtc;
-        private readonly IWebHostEnvironment _env;
+        private readonly IResizableImage _image;
+        private readonly ResizeParameters _resizeParameters;
 
-        public ImageResizer(HttpRequest request, ILoggerFactory factory, IMemoryCache memoryCache, IWebHostEnvironment env)
+        public ImageResizer(IResizableImage image, ResizeParameters resizeParameters, ILogger<ImageResizer> logger)
         {
-            _request = request;
-            _path = _request.Path;
-            _logger = factory.CreateLogger<ImageResizer>();
-            _memoryCache = memoryCache;
-            _env = env;
+            _image = image;
+            _resizeParameters = resizeParameters;
+            _logger = logger;
         }
 
         public SKData Resize()
         {
-
-            _resizeParams = GetResizeParams();
-            if (_resizeParams is null)
+            if (_resizeParameters is null)
             {
                 return null;
             }
@@ -52,86 +40,27 @@ namespace AdBoardAPI.ImageResizer
             return imageData;
         }
 
-        private ResizeParameters GetResizeParams()
-        {
-            var resizeParams = new ResizeParameters();
-            var query = _request.Query;
-
-            resizeParams.HasParams =
-                resizeParams.GetType().GetTypeInfo()
-                    .GetProperties().Where(f => f.Name != "HasParams")
-                    .Any(f => query.ContainsKey(f.Name));
-
-            if (!resizeParams.HasParams)
-            {
-                return null;
-            }
-
-            var width = 0;
-            if (query.ContainsKey("width"))
-            {
-                int.TryParse(query["width"], out width);
-            }
-            resizeParams.Width = width;
-
-            var height = 0;
-            if (query.ContainsKey("height"))
-            {
-                int.TryParse(query["height"], out height);
-            }
-            resizeParams.Height = height;
-
-            var format = _path.Value.Substring(_path.Value.LastIndexOf('.') + 1);
-            resizeParams.format = format;
-
-            return resizeParams;
-        }
-
         private SKData GetImageData()
         {
-            var imageFilePath = Path.Combine(_env.WebRootPath, _path.Value.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar));
+            var bitmap = LoadBitmap(_image.ImageStream, out _);
 
-            var lastWriteTimeUtc = File.GetLastWriteTimeUtc(imageFilePath);
-            if (lastWriteTimeUtc.Year == 1601)
+            if (_resizeParameters.Height == 0)
             {
-                return null;
+                _resizeParameters.Height = (int) Math.Round(bitmap.Height * (float)_resizeParameters.Width / bitmap.Width);
+            }
+            else if (_resizeParameters.Width == 0)
+            {
+                _resizeParameters.Width = (int) Math.Round(bitmap.Width * (float)_resizeParameters.Height / bitmap.Height);
             }
 
-            long cacheKey;
-
-            unchecked
-            {
-                cacheKey = _path.GetHashCode() + _lastWriteTimeUtc.ToBinary() +
-                           _resizeParams.ToString().GetHashCode();
-            }
-
-            var isCached = _memoryCache.TryGetValue<byte[]>(cacheKey, out var imageBytes);
-            if (isCached)
-            {
-                _logger.LogInformation("Изображение восстановлено из кэша.");
-                return SKData.CreateCopy(imageBytes);
-            }
-
-            var bitmap = LoadBitmap(File.OpenRead(imageFilePath), out _);
-
-            if (_resizeParams.Height == 0)
-            {
-                _resizeParams.Height = (int) Math.Round(bitmap.Height * (float) _resizeParams.Width / bitmap.Width);
-            }
-            else if (_resizeParams.Width == 0)
-            {
-                _resizeParams.Width = (int) Math.Round(bitmap.Width * (float) _resizeParams.Height / bitmap.Height);
-            }
-
-            var resizedImageInfo = new SKImageInfo(_resizeParams.Width, _resizeParams.Height,
+            var resizedImageInfo = new SKImageInfo(_resizeParameters.Width, _resizeParameters.Height,
                 SKImageInfo.PlatformColorType, bitmap.AlphaType);
             using var resizedBitmap = bitmap.Resize(resizedImageInfo, SKFilterQuality.High);
             using var resizedImage = SKImage.FromBitmap(resizedBitmap);
 
-            var encodeFormat = _resizeParams.format == "png" ? SKEncodedImageFormat.Png : SKEncodedImageFormat.Jpeg;
+            var encodeFormat = _resizeParameters.Format == "png" ? SKEncodedImageFormat.Png : SKEncodedImageFormat.Jpeg;
             var imageData = resizedImage.Encode(encodeFormat, 100);
 
-            _memoryCache.Set(cacheKey, imageData.ToArray());
             bitmap.Dispose();
 
             return imageData;

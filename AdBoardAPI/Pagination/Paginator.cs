@@ -1,15 +1,15 @@
-﻿using AdBoardAPI.Models;
-using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AdBoardAPI.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace AdBoardAPI
+namespace AdBoardAPI.Pagination
 {
     public class Paginator<T> where T : class, IModel
     {
-        private IQueryable<T> _list;
+        private readonly IQueryable<T> _list;
         private readonly int? _page;
         private readonly int? _onPage;
 
@@ -23,9 +23,9 @@ namespace AdBoardAPI
         public async Task<PageView<T>> MakePageViewAsync()
         {
             List<T> list;
-            int count = await _list.CountAsync();
-            int page = _page.HasValue ? (_page.Value == 0 ? 1 : _page.Value) : 1;
-            int onPage = _onPage.HasValue ? (_onPage.Value == 0 ? 10 : _onPage.Value) : 10;
+            var count = await _list.CountAsync();
+            var page = _page.HasValue ? (_page.Value == 0 ? 1 : _page.Value) : 1;
+            var onPage = _onPage.HasValue ? (_onPage.Value == 0 ? 10 : _onPage.Value) : 10;
             int totalPages;
 
             if (!_page.HasValue && !_onPage.HasValue)

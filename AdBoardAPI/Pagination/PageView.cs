@@ -1,7 +1,7 @@
-﻿using AdBoardAPI.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using AdBoardAPI.Models;
 
-namespace AdBoardAPI
+namespace AdBoardAPI.Pagination
 {
     /// <summary>
     /// Сущность "Страница". Содержит список объявлений, признаки наличия предыдущей и следующей страницы, общее количество страниц

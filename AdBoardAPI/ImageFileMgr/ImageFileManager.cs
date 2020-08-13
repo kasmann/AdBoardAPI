@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 
 namespace AdBoardAPI.ImageFileMgr
 {
-    class ImageFileManager : IImageFileManager
+    public class ImageFileManager : IImageFileManager
     {
-        private AppConfiguration _options;
+        private readonly AppConfiguration _options;
 
         public ImageFileManager(AppConfiguration options)
         {

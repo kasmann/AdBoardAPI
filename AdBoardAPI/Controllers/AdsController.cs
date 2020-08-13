@@ -9,6 +9,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AdBoardAPI.Models.AdModel;
+using AdBoardAPI.Pagination.Filter;
+using AdBoardAPI.Pagination.Searcher;
+using AdBoardAPI.Pagination.Sorter;
 
 namespace AdBoardAPI.Controllers
 {

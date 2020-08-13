@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using System.IO;
+using AdBoardAPI.Options.Validation;
 
 namespace AdBoardAPI
 {
