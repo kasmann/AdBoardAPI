@@ -98,7 +98,7 @@ namespace AdBoardAPI.Controllers
 
             if (!string.IsNullOrEmpty(sortBy))
             {
-                var adsSorter = new AdsSorter(list, sortBy);
+                ISorter<Ad> adsSorter = new AdsSorter(list, sortBy);
                 list = adsSorter.Sort();
             }
 

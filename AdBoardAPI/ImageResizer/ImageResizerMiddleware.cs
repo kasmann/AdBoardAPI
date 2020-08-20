@@ -69,9 +69,11 @@ namespace AdBoardAPI.ImageResizer
                 return;
             }
 
-            IResizableImage image = new ResizableImage(File.OpenRead(path));
-            var imageResizer = new ImageResizer(image, resizeParameters, new Logger<ImageResizer>(_factory));
-            result = imageResizer.Resize();
+            await using var imageStream = File.OpenRead(path);
+            using IResizableImage image = new ResizableImage(imageStream);
+            var imageResizer = new ImageResizer(new Logger<ImageResizer>(_factory));
+
+            result = imageResizer.Resize(image, resizeParameters);
             if (!(result is null))
             {
                 _memoryCache.Set(cacheKey, result.ToArray());

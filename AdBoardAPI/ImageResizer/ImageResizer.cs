@@ -6,21 +6,22 @@ using System.IO;
 
 namespace AdBoardAPI.ImageResizer
 {
-    public class ImageResizer
+    public class ImageResizer : IImageResizer
     {
         private readonly ILogger<ImageResizer> _logger;
-        private readonly IResizableImage _image;
-        private readonly ResizeParameters _resizeParameters;
+        private IResizableImage _image;
+        private ResizeParameters _resizeParameters;
 
-        public ImageResizer(IResizableImage image, ResizeParameters resizeParameters, ILogger<ImageResizer> logger)
+        public ImageResizer(ILogger<ImageResizer> logger)
         {
-            _image = image;
-            _resizeParameters = resizeParameters;
             _logger = logger;
         }
 
-        public SKData Resize()
+        public SKData Resize(IResizableImage image, ResizeParameters resizeParameters)
         {
+            _image = image;
+            _resizeParameters = resizeParameters;
+
             if (_resizeParameters is null)
             {
                 return null;
