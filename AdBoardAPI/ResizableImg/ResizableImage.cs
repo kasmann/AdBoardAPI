@@ -15,10 +15,5 @@ namespace AdBoardAPI.ResizableImg
             }
             ImageStream = imageFileStream;
         }
-
-        public async void Dispose()
-        {
-            await ImageStream.DisposeAsync();
-        }
     }
 }
