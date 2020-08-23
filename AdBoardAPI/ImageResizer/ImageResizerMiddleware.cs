@@ -1,11 +1,14 @@
-﻿using AdBoardAPI.ResizableImg;
+﻿using AdBoardAPI.CustomCache.CustomCacheController;
+using AdBoardAPI.CustomCache.CustomCacheInfo;
+using AdBoardAPI.CustomCache.CustomCacheManager;
+using AdBoardAPI.CustomCacheManager;
+using AdBoardAPI.Options;
+using AdBoardAPI.ResizableImg;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using SkiaSharp;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,24 +19,25 @@ namespace AdBoardAPI.ImageResizer
     {    
         private readonly RequestDelegate _next;
         private readonly IWebHostEnvironment _env;
-        private readonly IMemoryCache _memoryCache;
-        private readonly ILogger<ImageResizerMiddleware> _logger;
-        private readonly ILoggerFactory _factory;
+        private readonly ImageResizer _imageResizer;
+        private readonly AppConfiguration _appConfiguration;
+        private readonly ICustomImageCacheController _cacheController;
 
         private static readonly string[] Suffixes = { ".png", ".jpg", ".jpeg" };
 
-        public ImageResizerMiddleware(RequestDelegate next, IWebHostEnvironment env, ILoggerFactory factory, IMemoryCache memoryCache)
+        public ImageResizerMiddleware(RequestDelegate next, IWebHostEnvironment env, ImageResizer imageResizer, 
+                                        AppConfiguration appConfiguration, ICustomImageCacheController cacheController)
         {
             _next = next;
             _env = env;
-            _memoryCache = memoryCache;
-            _factory = factory;
-            _logger = new Logger<ImageResizerMiddleware>(_factory);
+            _imageResizer = imageResizer;
+            _appConfiguration = appConfiguration;
+            _cacheController = cacheController;
         }
 
         public async Task Invoke(HttpContext httpContext)
         {
-            var path = httpContext.Request.Path;
+            var path = httpContext.Request.Path.Value;
             var resizeParameters = new ResizeParameters(path, httpContext.Request.Query);
             if (httpContext.Request.Query.Count == 0 || !IsImagePath(path) || !resizeParameters.HasParams)
             {
@@ -41,41 +45,32 @@ namespace AdBoardAPI.ImageResizer
                 return;
             }
 
+            var cacheKey = (path.GetHashCode() + resizeParameters.ToString().GetHashCode()).ToString("X");
+            var cacheDirectoryName = Path.GetFileName(path).Replace(".", "");
 
-            var imageFilePath = Path.Combine(_env.WebRootPath,
-                path.Value.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar));
-            var lastWriteTimeUtc = File.GetLastWriteTimeUtc(imageFilePath);
+            ICustomImageCacheInfo cacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
+            cacheInfo.CacheRoot = Path.Join(cacheInfo.CacheRoot, cacheDirectoryName);
+            ICustomImageCacheManager cacheManager = new PhysicalImageCacheManager(cacheInfo);
 
-
-            if (lastWriteTimeUtc.Year == 1601)
+            if (cacheManager.Contains(cacheKey))
             {
-                await _next.Invoke(httpContext);
-            }
-
-            long cacheKey;
-            unchecked
-            {
-                cacheKey = path.GetHashCode() + lastWriteTimeUtc.ToBinary() +
-                           resizeParameters.ToString().GetHashCode();
-            }
-
-            SKData result;
-            var isCached = _memoryCache.TryGetValue<byte[]>(cacheKey, out var imageBytes);
-            if (isCached)
-            {
-                _logger.LogInformation("Изображение восстановлено из кэша.");
-                result = SKData.CreateCopy(imageBytes);
-                await httpContext.Response.Body.WriteAsync(result.ToArray(), 0, result.ToArray().Length);
+                var cachedImageBytes = await cacheManager.ReadCachedFileAsync(cacheKey);
+                await httpContext.Response.Body.WriteAsync(cachedImageBytes, 0, cachedImageBytes.Length);
                 return;
             }
+            
+            await using var imageStream = File.OpenRead(path);
+            using IResizableImage image = new ResizableImage(imageStream);
+            
+            var result = _imageResizer.Resize(image, resizeParameters);
 
-            IResizableImage image = new ResizableImage(File.OpenRead(path));
-            var imageResizer = new ImageResizer(image, resizeParameters, new Logger<ImageResizer>(_factory));
-            result = imageResizer.Resize();
             if (!(result is null))
             {
-                _memoryCache.Set(cacheKey, result.ToArray());
-                await httpContext.Response.Body.WriteAsync(result.ToArray(), 0, result.ToArray().Length);
+                cacheManager.OnFileReadyToCache += _cacheController.CheckCacheState;
+                var cachedFilepath = await cacheManager.CacheFileAsync(result.ToArray(), path, cacheKey);
+                var cachedFile = File.ReadAllBytesAsync(cachedFilepath);
+                await httpContext.Response.Body.WriteAsync(await cachedFile, 0, cachedFile.Result.Length);
+                cacheManager.OnFileReadyToCache -= _cacheController.CheckCacheState;
             }
             else
             {
@@ -96,9 +91,9 @@ namespace AdBoardAPI.ImageResizer
 
     public static class ImageResizerMiddlewareExtensions
     {
-        public static IServiceCollection AddImageResizer(this IServiceCollection services)
+        public static IServiceCollection AddImageResizer(this IServiceCollection services, ILoggerFactory factory)
         {
-            return services.AddMemoryCache();
+            return services.AddSingleton(new ImageResizer(new Logger<ImageResizer>(factory)));
         }
 
         public static IApplicationBuilder UseImageResizer(this IApplicationBuilder builder)

@@ -38,7 +38,12 @@ namespace AdBoardAPI.ImageResizer
                 int.TryParse(parameters["height"], out height);
             }
             Height = height;
-            Format = Path.GetExtension(path.Value);  //path.Value.Substring(path.Value.LastIndexOf('.') + 1);
+            Format = Path.GetExtension(path.Value);
+        }
+
+        public string ToUrlPart()
+        {
+            return $"{Width}x{Height}{Format}";
         }
 
         public override string ToString()
