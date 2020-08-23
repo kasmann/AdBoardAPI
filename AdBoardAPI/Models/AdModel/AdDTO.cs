@@ -21,6 +21,7 @@ namespace AdBoardAPI.Models.AdModel
         /// <example>Продам телевизор Grundig 32"</example>
         [Required]
         public string Subject { get; set; }
+
         /// <summary>
         /// Текст объявления. Если текст не задан, то будет скопирован заголовок объявления
         /// </summary>

@@ -10,7 +10,7 @@ namespace AdBoardAPI.ImageFileMgr
     public class ImageFileManager : IImageFileManager
     {
         private readonly AppConfiguration _options;
-        private ICustomImageCacheController _cacheController;
+        private readonly ICustomImageCacheController _cacheController;
 
         public ImageFileManager(AppConfiguration options, ICustomImageCacheController cacheController)
         {

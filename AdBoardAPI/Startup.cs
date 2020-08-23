@@ -15,6 +15,7 @@ using System.IO;
 using AdBoardAPI.CustomCache.CustomCacheController;
 using Microsoft.Net.Http.Headers;
 using AdBoardAPI.Options.Validation;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
@@ -68,7 +69,9 @@ namespace AdBoardAPI
             app.UseExceptionHandler(appBuilder => appBuilder.UseGlobalExceptionHandler());
 
             app.UseImageResizer();
+
             app.UseSwagger();
+
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "AdBoardAPI v1");

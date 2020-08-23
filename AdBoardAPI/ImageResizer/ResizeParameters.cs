@@ -41,11 +41,6 @@ namespace AdBoardAPI.ImageResizer
             Format = Path.GetExtension(path.Value);
         }
 
-        public string ToUrlPart()
-        {
-            return $"{Width}x{Height}{Format}";
-        }
-
         public override string ToString()
         {
             var sb = new StringBuilder();

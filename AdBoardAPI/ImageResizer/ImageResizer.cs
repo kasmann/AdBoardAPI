@@ -9,23 +9,22 @@ namespace AdBoardAPI.ImageResizer
     public class ImageResizer
     {
         private readonly ILogger<ImageResizer> _logger;
-        private readonly IResizableImage _image;
-        private readonly ResizeParameters _resizeParameters;
+        private IResizableImage _image;
+        private ResizeParameters _resizeParameters;
 
-        public ImageResizer(IResizableImage image, ResizeParameters resizeParameters, ILogger<ImageResizer> logger)
+        public ImageResizer(ILogger<ImageResizer> logger)
         {
-            _image = image;
-            _resizeParameters = resizeParameters;
             _logger = logger;
         }
 
-        public SKData Resize()
+        public SKData Resize(IResizableImage image, ResizeParameters resizeParameters)
         {
-            if (_resizeParameters is null)
-            {
-                return null;
-            }
-
+            if (resizeParameters is null) return null;
+            if (image is null) return null;
+            
+            _image = image;
+            _resizeParameters = resizeParameters;
+            
             SKData imageData = null;
 
             try
