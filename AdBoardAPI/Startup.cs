@@ -1,6 +1,7 @@
-using System;
+using AdBoardAPI.CustomCache.CustomCacheController;
 using AdBoardAPI.ImageResizer;
 using AdBoardAPI.Options;
+using AdBoardAPI.Options.Validation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -9,15 +10,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using System.IO;
-using AdBoardAPI.CustomCache.CustomCacheController;
-using Microsoft.Net.Http.Headers;
-using AdBoardAPI.Options.Validation;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 
 namespace AdBoardAPI
 {

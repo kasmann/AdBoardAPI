@@ -17,7 +17,7 @@ namespace AdBoardAPI.CustomCache.CustomCacheManager
             _cacheInfo = cacheInfo;
         }
 
-        public async Task<string> CacheFileAsync(byte[] imageBytes, string filename, string cacheKey)
+        public async Task<byte[]> CacheFileAsync(byte[] imageBytes, string filename, string cacheKey)
         {
             if (!Directory.Exists(_cacheInfo.CacheRoot))
             {
@@ -31,13 +31,12 @@ namespace AdBoardAPI.CustomCache.CustomCacheManager
             var fileFullpath = Path.Join(_cacheInfo.CacheRoot, $"{filenameWithoutExtension}_{cacheKey}{extension}");
             
             await File.WriteAllBytesAsync(fileFullpath, imageBytes);
-            return fileFullpath;
+            return await File.ReadAllBytesAsync(fileFullpath);
         }
 
         public async Task<byte[]> ReadCachedFileAsync(string cacheKey)
         {
             var filename = Directory.GetFiles(_cacheInfo.CacheRoot, $"*_{cacheKey}.*")[0];
-            var fileFullPath = Path.Join(_cacheInfo.CacheRoot, filename);
             return await File.ReadAllBytesAsync(filename);
         }
 

@@ -48,8 +48,10 @@ namespace AdBoardAPI.ImageResizer
             var cacheKey = (path.GetHashCode() + resizeParameters.ToString().GetHashCode()).ToString("X");
             var cacheDirectoryName = Path.GetFileName(path).Replace(".", "");
 
+            //сведения об общей директории кэша
             var mainCacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
 
+            //сведения о частной директории кэша конкретного изображения
             var specCacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
             specCacheInfo.CacheRoot = Path.Join(specCacheInfo.CacheRoot, cacheDirectoryName);
 
@@ -73,9 +75,8 @@ namespace AdBoardAPI.ImageResizer
                 _cacheController.CheckCacheState(mainCacheInfo);
                 
                 specCacheManager.OnFileReadyToCache += _cacheController.CheckCacheState;
-                var cachedFilepath = await specCacheManager.CacheFileAsync(result.ToArray(), path, cacheKey);
-                var cachedFile = File.ReadAllBytesAsync(cachedFilepath);
-                await httpContext.Response.Body.WriteAsync(await cachedFile, 0, cachedFile.Result.Length);
+                var cachedFile = await specCacheManager.CacheFileAsync(result.ToArray(), path, cacheKey);
+                await httpContext.Response.Body.WriteAsync(cachedFile, 0, cachedFile.Length);
                 specCacheManager.OnFileReadyToCache -= _cacheController.CheckCacheState;
             }
             else

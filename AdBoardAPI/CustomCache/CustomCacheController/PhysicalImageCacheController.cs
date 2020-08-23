@@ -1,8 +1,6 @@
 ﻿using AdBoardAPI.CustomCache.CustomCacheInfo;
-using System;
 using System.IO;
 using System.Linq;
-using AdBoardAPI.CustomCacheManager;
 
 namespace AdBoardAPI.CustomCache.CustomCacheController
 {
@@ -13,7 +11,6 @@ namespace AdBoardAPI.CustomCache.CustomCacheController
         public void CheckCacheState(ICustomImageCacheInfo cacheInfo)
         {
             _cacheInfo = cacheInfo;
-
 
             if (IsMaxSizeExceeded() || IsMaxFilesCountExceeded())
             {

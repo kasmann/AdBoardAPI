@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using AdBoardAPI.CustomCache.CustomCacheInfo;
-using AdBoardAPI.CustomCacheManager;
+﻿using AdBoardAPI.CustomCache.CustomCacheInfo;
 
 namespace AdBoardAPI.CustomCache.CustomCacheController
 {

@@ -1,9 +1,8 @@
-﻿using System;
+﻿using AdBoardAPI.CustomCache.CustomCacheController;
 using AdBoardAPI.Options;
 using Microsoft.AspNetCore.Http;
 using System.IO;
 using System.Threading.Tasks;
-using AdBoardAPI.CustomCache.CustomCacheController;
 
 namespace AdBoardAPI.ImageFileMgr
 {
@@ -28,9 +27,11 @@ namespace AdBoardAPI.ImageFileMgr
         {
             await using var fileStream = new FileStream(path, FileMode.Create);
             var cacheRoot = Path.Join(_options.CacheOptions.CacheRoot, Path.GetFileName(path).Replace(".", ""));
-            _cacheController.ClearCache(cacheRoot);
+            
             await image.CopyToAsync(fileStream);
 
+            //изображение обновилось => очистить частную кэш-директорию этого изображения
+            _cacheController.ClearCache(cacheRoot);
         }
     }
 }
