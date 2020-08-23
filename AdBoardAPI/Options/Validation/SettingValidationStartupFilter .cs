@@ -34,6 +34,7 @@ namespace AdBoardAPI.Options.Validation
             }
 
             if (!validated) throw new ValidationException("Валидация конфигурации не пройдена");
+
             return next;
         }
     }

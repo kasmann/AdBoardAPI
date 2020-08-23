@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 
 namespace AdBoardAPI.Models.AdModel
 {
-    
     /// <summary>
     /// Объект передачи данных для сущности "Объявление"
     /// </summary>
