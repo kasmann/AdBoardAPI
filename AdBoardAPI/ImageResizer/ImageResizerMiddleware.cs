@@ -48,13 +48,16 @@ namespace AdBoardAPI.ImageResizer
             var cacheKey = (path.GetHashCode() + resizeParameters.ToString().GetHashCode()).ToString("X");
             var cacheDirectoryName = Path.GetFileName(path).Replace(".", "");
 
-            ICustomImageCacheInfo cacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
-            cacheInfo.CacheRoot = Path.Join(cacheInfo.CacheRoot, cacheDirectoryName);
-            ICustomImageCacheManager cacheManager = new PhysicalImageCacheManager(cacheInfo);
+            var mainCacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
 
-            if (cacheManager.Contains(cacheKey))
+            var specCacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
+            specCacheInfo.CacheRoot = Path.Join(specCacheInfo.CacheRoot, cacheDirectoryName);
+
+            ICustomImageCacheManager specCacheManager = new PhysicalImageCacheManager(specCacheInfo);
+
+            if (specCacheManager.Contains(cacheKey))
             {
-                var cachedImageBytes = await cacheManager.ReadCachedFileAsync(cacheKey);
+                var cachedImageBytes = await specCacheManager.ReadCachedFileAsync(cacheKey);
                 await httpContext.Response.Body.WriteAsync(cachedImageBytes, 0, cachedImageBytes.Length);
                 return;
             }
@@ -66,11 +69,14 @@ namespace AdBoardAPI.ImageResizer
 
             if (!(result is null))
             {
-                cacheManager.OnFileReadyToCache += _cacheController.CheckCacheState;
-                var cachedFilepath = await cacheManager.CacheFileAsync(result.ToArray(), path, cacheKey);
+                //проверить общее состояние кэша
+                _cacheController.CheckCacheState(mainCacheInfo);
+                
+                specCacheManager.OnFileReadyToCache += _cacheController.CheckCacheState;
+                var cachedFilepath = await specCacheManager.CacheFileAsync(result.ToArray(), path, cacheKey);
                 var cachedFile = File.ReadAllBytesAsync(cachedFilepath);
                 await httpContext.Response.Body.WriteAsync(await cachedFile, 0, cachedFile.Result.Length);
-                cacheManager.OnFileReadyToCache -= _cacheController.CheckCacheState;
+                specCacheManager.OnFileReadyToCache -= _cacheController.CheckCacheState;
             }
             else
             {
