@@ -1,3 +1,4 @@
+using System;
 using AdBoardAPI.ImageResizer;
 using AdBoardAPI.Options;
 using Microsoft.AspNetCore.Builder;
@@ -11,7 +12,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using System.IO;
+using AdBoardAPI.CustomCache.CustomCacheController;
+using Microsoft.Net.Http.Headers;
 using AdBoardAPI.Options.Validation;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace AdBoardAPI
 {
@@ -21,7 +26,7 @@ namespace AdBoardAPI
 
         public Startup(IConfiguration configuration)
         {
-            Configuration = configuration;            
+            Configuration = configuration;
         }
 
         public void ConfigureServices(IServiceCollection services)
@@ -41,11 +46,15 @@ namespace AdBoardAPI
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "AdBoardAPI", Version = "v1" });
-                var filePath = Path.Combine(System.AppContext.BaseDirectory, "AdBoardAPI.xml");
+                var filePath = Path.Join(System.AppContext.BaseDirectory, "AdBoardAPI.xml");
                 c.IncludeXmlComments(filePath);
             });
 
-            services.AddImageResizer();
+            services.AddSingleton<ICustomImageCacheController, PhysicalImageCacheController>();
+
+            var factory = LoggerFactory.Create(builder => builder.AddConsole());
+            services.AddImageResizer(factory);
+
             services.AddControllers();
         }
 
@@ -70,8 +79,8 @@ namespace AdBoardAPI
             app.UseStaticFiles(
                 new StaticFileOptions
                 {
-                    FileProvider = new PhysicalFileProvider(Path.Combine(env.WebRootPath, options.Value.SystemOptions.StaticFilesRoot)),
-                    RequestPath = new PathString(options.Value.SystemOptions.StaticFilesRoot)                    
+                    FileProvider = new PhysicalFileProvider(Path.Join(env.WebRootPath, options.Value.SystemOptions.StaticFilesRoot)),
+                    RequestPath = new PathString(options.Value.SystemOptions.StaticFilesRoot)
                 });
             
             app.UseRouting();

@@ -1,9 +1,8 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 
 namespace AdBoardAPI.ResizableImg
 {
-    public interface IResizableImage : IDisposable
+    public interface IResizableImage
     {
         public FileStream ImageStream { get; }
     }

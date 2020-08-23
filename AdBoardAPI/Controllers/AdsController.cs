@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AdBoardAPI.CustomCache.CustomCacheController;
 using AdBoardAPI.Models.AdModel;
 using AdBoardAPI.Pagination.Filter;
 using AdBoardAPI.Pagination.Searcher;
@@ -22,11 +23,13 @@ namespace AdBoardAPI.Controllers
     {
         private readonly AdBoardContext _context;
         private readonly AppConfiguration _options;
+        private ICustomImageCacheController _cacheController;
 
-        public AdsController(AdBoardContext context, AppConfiguration options)
+        public AdsController(AdBoardContext context, AppConfiguration options, ICustomImageCacheController cacheController)
         {
             _context = context;
             _options = options;
+            _cacheController = cacheController;
         }
 
         // GET: api/Ads/5
@@ -37,10 +40,11 @@ namespace AdBoardAPI.Controllers
         /// <response code="200">ОК</response>
         /// <response code="404">Объявление не найдено</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(typeof(User), 200)]
+        [ProducesResponseType(typeof(Ad), 200)]
         public async Task<ActionResult<Ad>> GetAd(Guid id)
         {
             var ad = await _context.Ads.FindAsync(id);
+
             if (ad == null)
             {
                 return NotFound();
@@ -98,7 +102,7 @@ namespace AdBoardAPI.Controllers
 
             if (!string.IsNullOrEmpty(sortBy))
             {
-                ISorter<Ad> adsSorter = new AdsSorter(list, sortBy);
+                var adsSorter = new AdsSorter(list, sortBy);
                 list = adsSorter.Sort();
             }
 
@@ -118,28 +122,36 @@ namespace AdBoardAPI.Controllers
         /// <response code="200">Объявление изменено</response>
         /// <response code="404">Исходное объявление не найдено</response>
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutAd(Guid id, AdDTO adDTO)
+        public async Task<IActionResult> PutAd(Guid id, [FromForm]AdDTO adDTO)
         {
             var ad = await _context.Ads.FindAsync(id);
             if (ad == null)
             {
                 return NotFound();
             }
-
-            ad.User = adDTO.User;
-            ad.Subject = adDTO.Subject;
-            ad.Content = adDTO.Content;
-
-            IImageFileManager imageManager = new ImageFileManager(_options);
-            var imageUrl = imageManager.GenerateURL(ad.Id.ToString(), adDTO.Image.FileName);
-            try
+            
+            if (adDTO.User != Guid.Empty)
             {
-                await imageManager.UploadImageAsync(adDTO.Image, imageUrl);
+                if (!UserExists(adDTO.User)) return NotFound();
+                ad.User = adDTO.User;
             }
-            catch (Exception)
+
+            if (!string.IsNullOrEmpty(adDTO.Subject)) ad.Subject = adDTO.Subject;
+            if (!string.IsNullOrEmpty(adDTO.Content)) ad.Content = adDTO.Content;
+
+            if (adDTO.Image != null)
             {
-                return Problem("Возникла ошибка при загрузке изображения", null,
-                    StatusCodes.Status500InternalServerError, "Ошибка загрузки изображения");
+                IImageFileManager imageManager = new ImageFileManager(_options, _cacheController);
+                var imageUrl = imageManager.GenerateURL(ad.Id.ToString(), adDTO.Image.FileName);
+                try
+                {
+                    await imageManager.UploadImageAsync(adDTO.Image, imageUrl);
+                }
+                catch (Exception)
+                {
+                    return Problem("Возникла ошибка при загрузке изображения", null,
+                        StatusCodes.Status500InternalServerError, "Ошибка загрузки изображения");
+                }
             }
 
             _context.Entry(ad).State = EntityState.Modified;
@@ -193,7 +205,7 @@ namespace AdBoardAPI.Controllers
 
             if (adDTO.Image != null)
             {
-                IImageFileManager imageManager = new ImageFileManager(_options);
+                IImageFileManager imageManager = new ImageFileManager(_options, _cacheController);
                 imageUrl = imageManager.GenerateURL(adId.ToString(), adDTO.Image.FileName);
                 try
                 {
@@ -214,7 +226,7 @@ namespace AdBoardAPI.Controllers
                 Rating = new Random().Next(-5, 10),
                 User = adDTO.User,
                 Subject = adDTO.Subject,
-                Content = adDTO.Content is null ? adDTO.Subject : adDTO.Content,
+                Content = adDTO.Content ?? adDTO.Subject,
                 ImageURL = imageUrl
             };
 
