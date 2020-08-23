@@ -1,6 +1,7 @@
 ﻿using AdBoardAPI.CustomCache.CustomCacheInfo;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace AdBoardAPI.CustomCache.CustomCacheController
 {

@@ -8,9 +8,5 @@ namespace AdBoardAPI.CustomCacheManager
         public Task<byte[]> CacheFileAsync(byte[] imageBytes, string filename, string cacheKey);
         public Task<byte[]> ReadCachedFileAsync(string cacheKey);
         public bool Contains(string cacheKey);
-
-        public delegate void CacheHandler(ICustomImageCacheInfo cacheInfo);
-
-        public event CacheHandler OnFileReadyToCache;
     }
 }

@@ -5,6 +5,7 @@ namespace AdBoardAPI.CustomCache.CustomCacheInfo
     public class PhysicalImageCacheInfo : ICustomImageCacheInfo
     {
         public string CacheRoot { get; set; }
+        public string SpecCacheRoot { get; set; }
         public uint MaxCacheSize { get; }
         public uint MaxFilesCached { get; }
 

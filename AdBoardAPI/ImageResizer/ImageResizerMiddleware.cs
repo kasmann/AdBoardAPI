@@ -49,17 +49,14 @@ namespace AdBoardAPI.ImageResizer
             var cacheDirectoryName = Path.GetFileName(path).Replace(".", "");
 
             //сведения об общей директории кэша
-            var mainCacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
+            var cacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
+            cacheInfo.SpecCacheRoot = Path.Join(cacheInfo.CacheRoot, cacheDirectoryName);
+            
+            ICustomImageCacheManager cacheManager = new PhysicalImageCacheManager(cacheInfo);
 
-            //сведения о частной директории кэша конкретного изображения
-            var specCacheInfo = new PhysicalImageCacheInfo(_appConfiguration.CacheOptions);
-            specCacheInfo.CacheRoot = Path.Join(specCacheInfo.CacheRoot, cacheDirectoryName);
-
-            ICustomImageCacheManager specCacheManager = new PhysicalImageCacheManager(specCacheInfo);
-
-            if (specCacheManager.Contains(cacheKey))
+            if (cacheManager.Contains(cacheKey))
             {
-                var cachedImageBytes = await specCacheManager.ReadCachedFileAsync(cacheKey);
+                var cachedImageBytes = await cacheManager.ReadCachedFileAsync(cacheKey);
                 await httpContext.Response.Body.WriteAsync(cachedImageBytes, 0, cachedImageBytes.Length);
                 return;
             }
@@ -71,13 +68,10 @@ namespace AdBoardAPI.ImageResizer
 
             if (!(result is null))
             {
-                //проверить общее состояние кэша
-                _cacheController.CheckCacheState(mainCacheInfo);
-                
-                specCacheManager.OnFileReadyToCache += _cacheController.CheckCacheState;
-                var cachedFile = await specCacheManager.CacheFileAsync(result.ToArray(), path, cacheKey);
+                _cacheController.CheckCacheState(cacheInfo);
+
+                var cachedFile = await cacheManager.CacheFileAsync(result.ToArray(), path, cacheKey);
                 await httpContext.Response.Body.WriteAsync(cachedFile, 0, cachedFile.Length);
-                specCacheManager.OnFileReadyToCache -= _cacheController.CheckCacheState;
             }
             else
             {
